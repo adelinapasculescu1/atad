@@ -1,0 +1,4 @@
+date,description,amount,type
+2025-11-01,Salary,5000,income
+2025-11-02,Groceries,-120,expense
+2025-11-03,Netflix,-15.99,expense

@@ -14,10 +14,10 @@
 
 ## Project structure 
 
+```
 ATAD/
   cmd/
     main.go
-
   internal/
     cli/
     tui/
@@ -32,14 +32,12 @@ ATAD/
       reportsvc/
       searchsvc/
     ui/
-
   tests/
-
   docs/
     architecture.md
     decisions.md
     images/
-
+```
 
 
 ## Data models

@@ -1,0 +1,38 @@
+# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+atad
+
+# Build output folders
+bin/
+dist/
+
+# SQLite database
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Go build cache / temp
+*.test
+*.out
+
+# Logs
+*.log
+
+# VS Code settings
+.vscode/
+.history/
+
+# macOS files
+.DS_Store
+*.DS_Store
+
+# Go modules cache
+vendor/
+
+# Env files
+*.env
