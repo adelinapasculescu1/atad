@@ -2,19 +2,8 @@
 
 ## System architecture
 
-[ User ]
-   | 
-   v
-[ CLI / TUI layer ]
-   |
-   v
-[ Services layer ]
-   |
-   v
-[ Repository layer ]
-   |
-   v
-[ SQLite database ]
+[ User ] -> [ CLI / TUI Layer ] -> [ Services Layer ] -> [ Repository Layer ] -> [ SQLite Database ]
+
 
 | layer          | description                                              |
 | -------------- | ------------------------------------------------------------- |
@@ -28,6 +17,7 @@
 ATAD/
   cmd/
     main.go
+
   internal/
     cli/
     tui/
@@ -42,11 +32,14 @@ ATAD/
       reportsvc/
       searchsvc/
     ui/
+
   tests/
+
   docs/
     architecture.md
-    secisions.md
+    decisions.md
     images/
+
 
 
 ## Data models
