@@ -1,0 +1,1 @@
+**Command-line personal finance manager using Go**
