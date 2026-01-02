@@ -16,20 +16,21 @@ import (
 
 type Service struct {
     txRepo repository.TransactionRepository
+    catRepo repository.CategoryRepository
 }
 
 // Constructor
-func NewService(txRepo repository.TransactionRepository) *Service {
-    return &Service{txRepo: txRepo}
+func NewService(txRepo repository.TransactionRepository, catRepo repository.CategoryRepository) *Service {
+    return &Service{txRepo: txRepo, catRepo: catRepo}
 }
 
 // csv or ofx, ofx to be added
-func (s *Service) Import(filePath string, format string) error {
+func (s *Service) Import(filePath string, format string, defaultCategory string) error {
     switch strings.ToLower(format) {
     case "csv":
         return s.importCSV(filePath)
     case "ofx":
-        return s.importOFX(filePath)
+        return s.importOFX(filePath, defaultCategory)
     default:
         return fmt.Errorf("unsupported format: %s", format)
     }
@@ -55,6 +56,7 @@ func (s *Service) importCSV(filePath string) error {
         colLower := strings.ToLower(strings.TrimSpace(col))
         colIndex[colLower] = i
     }
+    catIdx, hasCategory := colIndex["category"]
 
     required := []string{"date", "description", "amount", "type"}
     for _, col := range required {
@@ -90,6 +92,27 @@ func (s *Service) importCSV(filePath string) error {
             return fmt.Errorf("invalid amount %q: %w", amountStr, err)
         }
 
+        var categoryID *int64
+        if hasCategory {
+            categoryName := strings.TrimSpace(record[catIdx])
+            if categoryName != "" {
+                cat, err := s.catRepo.GetByName(categoryName)
+                if err != nil {
+                    return err
+                }
+
+                if cat == nil {
+                    created, err := s.catRepo.Create(categoryName)
+                    if err != nil {
+                        return err
+                    }
+                    categoryID = &created.ID
+                } else {
+                    categoryID = &cat.ID
+                }
+            }
+        }
+
         var txType models.TransactionType
         switch typeStr {
         case "income":
@@ -109,7 +132,7 @@ func (s *Service) importCSV(filePath string) error {
             Description: desc,
             Amount:      amount,
             Type:        txType,
-            CategoryID:  nil, 
+            CategoryID:  categoryID, 
             Source:      fmt.Sprintf("import:%s", filePath),
         }
 
@@ -124,7 +147,7 @@ func (s *Service) importCSV(filePath string) error {
     return nil
 }
 
-func (s *Service) importOFX(filePath string) error {
+func (s *Service) importOFX(filePath string, defaultCategory string) error {
     data, err := os.ReadFile(filePath)
     if err != nil {
         return fmt.Errorf("opening OFX file: %w", err)
@@ -132,7 +155,23 @@ func (s *Service) importOFX(filePath string) error {
 
     content := string(data)
 
-    // Căutăm blocurile <STMTTRN> ... </STMTTRN>
+    var categoryID *int64
+    if strings.TrimSpace(defaultCategory) != "" {
+        cat, err := s.catRepo.GetByName(strings.TrimSpace(defaultCategory))
+        if err != nil {
+            return err
+        }
+        if cat == nil {
+            created, err := s.catRepo.Create(strings.TrimSpace(defaultCategory))
+            if err != nil {
+                return err
+            }
+            categoryID = &created.ID
+        } else {
+            categoryID = &cat.ID
+        }
+    }
+
     re := regexp.MustCompile(`(?s)<STMTTRN>(.*?)</STMTTRN>`)
     matches := re.FindAllStringSubmatch(content, -1)
     if len(matches) == 0 {
@@ -153,11 +192,9 @@ func (s *Service) importOFX(filePath string) error {
         }
 
         if rawDate == "" || rawAmount == "" {
-            // Sărim peste tranzacții incomplete
             continue
         }
 
-        // DTPOSTED de forma 20250118120000 → luăm doar YYYYMMDD
         if len(rawDate) < 8 {
             return fmt.Errorf("invalid DTPOSTED value: %q", rawDate)
         }
@@ -173,12 +210,10 @@ func (s *Service) importOFX(filePath string) error {
             return fmt.Errorf("invalid amount %q: %w", rawAmount, err)
         }
 
-        // Determinăm tipul tranzacției
         txType := models.TransactionTypeExpense
         if amount > 0 {
             txType = models.TransactionTypeIncome
         }
-        // Dacă există TRNTYPE, îl folosim ca hint
         if rawType == "CREDIT" {
             txType = models.TransactionTypeIncome
         } else if rawType == "DEBIT" {
@@ -190,7 +225,7 @@ func (s *Service) importOFX(filePath string) error {
             Description: desc,
             Amount:      amount,
             Type:        txType,
-            CategoryID:  nil,
+            CategoryID:  categoryID,
             Source:      fmt.Sprintf("import:%s", filePath),
         }
 
@@ -205,8 +240,6 @@ func (s *Service) importOFX(filePath string) error {
     return nil
 }
 
-// getOFXTagValue caută <TAG>valoare</TAG> sau <TAG>valoare<următor-tag>
-// și returnează "valoare".
 func getOFXTagValue(block, tag string) string {
     tagStart := "<" + tag + ">"
     idx := strings.Index(block, tagStart)
@@ -216,7 +249,6 @@ func getOFXTagValue(block, tag string) string {
 
     start := idx + len(tagStart)
 
-    // Căutăm următorul '<' după valoare
     end := strings.Index(block[start:], "<")
     if end == -1 {
         end = len(block)

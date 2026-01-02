@@ -1,4 +1,4 @@
-date,description,amount,type
-2025-11-01,Salary,5000,income
-2025-11-02,Groceries,-120,expense
-2025-11-03,Netflix,-15.99,expense
+date,description,amount,type,category
+2025-01-10,Lidl,-30,expense,Groceries
+2025-01-11,Netflix,-15,expense,Entertainment
+

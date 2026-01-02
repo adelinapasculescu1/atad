@@ -13,6 +13,7 @@ func NewImportCommand(deps Deps) *cobra.Command {
         RunE: func(cmd *cobra.Command, args []string) error {
             file, _ := cmd.Flags().GetString("file")
             format, _ := cmd.Flags().GetString("format")
+            categoryName, _ := cmd.Flags().GetString("category")
 
             if file == "" {
                 return fmt.Errorf("--file is required")
@@ -21,12 +22,14 @@ func NewImportCommand(deps Deps) *cobra.Command {
                 format = "csv"
             }
 
-            return deps.ImportSvc.Import(file, format)
+            return deps.ImportSvc.Import(file, format, categoryName)
         },
     }
 
     cmd.Flags().StringP("file", "f", "", "Path to CSV/OFX file")
     cmd.Flags().StringP("format", "", "csv", "File format: csv or ofx")
+    cmd.Flags().String("category", "", "Default category name (optional, mainly for OFX)")
+
 
     return cmd
 }

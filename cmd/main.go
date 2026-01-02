@@ -7,11 +7,11 @@ import (
     "github.com/adelinapasculescu1/atad/internal/db"
     "github.com/adelinapasculescu1/atad/internal/repository"
     "github.com/adelinapasculescu1/atad/internal/services/importsvc"
+    "github.com/adelinapasculescu1/atad/internal/services/transactionsvc"
 )
 
 
 func main() {
-    // Pentru început hardcodăm calea DB
     dbPath := "atad.db"
 
     database, err := db.Open(dbPath)
@@ -24,13 +24,16 @@ func main() {
         log.Fatalf("error running migrations: %v", err)
     }
 
-    // Repo & services
     txRepo := repository.NewSQLiteTransactionRepository(database)
-    importService := importsvc.NewService(txRepo)
+    categoryRepo := repository.NewSQLiteCategoryRepository(database)
+    importService := importsvc.NewService(txRepo, categoryRepo)
+    transactionService := transactionsvc.NewService(txRepo)
 
     deps := cli.Deps{
-        DB:        database,
-        ImportSvc: importService,
+        DB:             database,
+        ImportSvc:      importService,
+        TransactionSvc: transactionService,
+        CategoryRepo:   categoryRepo,
     }
 
     rootCmd := cli.NewRootCommand(deps)
