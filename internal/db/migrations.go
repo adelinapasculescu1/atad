@@ -25,6 +25,19 @@ CREATE TABLE IF NOT EXISTS categories (
 CREATE INDEX IF NOT EXISTS idx_transactions_category_id
 ON transactions(category_id);
 `,
+        `
+CREATE TABLE IF NOT EXISTS budgets (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    category_id INTEGER NOT NULL UNIQUE,
+    amount REAL NOT NULL,
+    period TEXT NOT NULL DEFAULT 'monthly',
+    FOREIGN KEY(category_id) REFERENCES categories(id)
+);
+`,
+        `
+CREATE INDEX IF NOT EXISTS idx_budgets_category_id
+ON budgets(category_id);
+`,
     }
 
     for _, q := range queries {

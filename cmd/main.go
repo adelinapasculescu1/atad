@@ -8,6 +8,8 @@ import (
     "github.com/adelinapasculescu1/atad/internal/repository"
     "github.com/adelinapasculescu1/atad/internal/services/importsvc"
     "github.com/adelinapasculescu1/atad/internal/services/transactionsvc"
+    "github.com/adelinapasculescu1/atad/internal/services/budgetsvc"
+
 )
 
 
@@ -26,14 +28,19 @@ func main() {
 
     txRepo := repository.NewSQLiteTransactionRepository(database)
     categoryRepo := repository.NewSQLiteCategoryRepository(database)
+    budgetRepo := repository.NewSQLiteBudgetRepository(database)
+
     importService := importsvc.NewService(txRepo, categoryRepo)
     transactionService := transactionsvc.NewService(txRepo)
+    budgetService := budgetsvc.NewService(budgetRepo, categoryRepo, txRepo)
+
 
     deps := cli.Deps{
         DB:             database,
         ImportSvc:      importService,
         TransactionSvc: transactionService,
         CategoryRepo:   categoryRepo,
+        BudgetSvc: budgetService,
     }
 
     rootCmd := cli.NewRootCommand(deps)

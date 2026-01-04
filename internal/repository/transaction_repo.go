@@ -9,6 +9,7 @@ import (
 
 type TransactionRepository interface {
     Create(tx *models.Transaction) error
+    SumExpensesByCategory(start, end time.Time) (map[int64]float64, error)
     //to be continued
 }
 
@@ -53,3 +54,33 @@ VALUES (?, ?, ?, ?, ?, ?);
     t.ID = id
     return nil
 }
+
+func (r *SQLiteTransactionRepository) SumExpensesByCategory(start, end time.Time) (map[int64]float64, error) {
+    query := `
+SELECT category_id, COALESCE(SUM(ABS(amount)), 0)
+FROM transactions
+WHERE type = 'expense'
+  AND date >= ?
+  AND date < ?
+  AND category_id IS NOT NULL
+GROUP BY category_id;
+`
+
+    rows, err := r.db.Query(query, start.Format(time.RFC3339), end.Format(time.RFC3339))
+    if err != nil {
+        return nil, err
+    }
+    defer rows.Close()
+
+    out := map[int64]float64{}
+    for rows.Next() {
+        var categoryID int64
+        var sum float64
+        if err := rows.Scan(&categoryID, &sum); err != nil {
+            return nil, err
+        }
+        out[categoryID] = sum
+    }
+    return out, rows.Err()
+}
+

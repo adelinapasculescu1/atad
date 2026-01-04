@@ -9,6 +9,7 @@ import (
 type CategoryRepository interface {
     Create(name string) (*models.Category, error)
     GetByName(name string) (*models.Category, error)
+    GetByID(id int64) (*models.Category, error)
     List() ([]models.Category, error)
 }
 
@@ -44,6 +45,20 @@ func (r *SQLiteCategoryRepository) GetByName(name string) (*models.Category, err
     }
     return &c, nil
 }
+
+func (r *SQLiteCategoryRepository) GetByID(id int64) (*models.Category, error) {
+    row := r.db.QueryRow(`SELECT id, name FROM categories WHERE id = ?;`, id)
+
+    var c models.Category
+    if err := row.Scan(&c.ID, &c.Name); err != nil {
+        if err == sql.ErrNoRows {
+            return nil, nil
+        }
+        return nil, err
+    }
+    return &c, nil
+}
+
 
 func (r *SQLiteCategoryRepository) List() ([]models.Category, error) {
     rows, err := r.db.Query(`SELECT id, name FROM categories ORDER BY name ASC;`)
