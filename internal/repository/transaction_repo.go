@@ -10,7 +10,8 @@ import (
 type TransactionRepository interface {
     Create(tx *models.Transaction) error
     SumExpensesByCategory(start, end time.Time) (map[int64]float64, error)
-    //to be continued
+    SumExpenses(start, end time.Time) (float64, error)
+    SumExpensesByCategoryName(start, end time.Time) (map[string]float64, error)
 }
 
 type SQLiteTransactionRepository struct {
@@ -84,3 +85,51 @@ GROUP BY category_id;
     return out, rows.Err()
 }
 
+func (r *SQLiteTransactionRepository) SumExpenses(start, end time.Time) (float64, error) {
+    query := `
+SELECT COALESCE(SUM(ABS(amount)), 0)
+FROM transactions
+WHERE type = 'expense'
+  AND date >= ?
+  AND date < ?;
+`
+    row := r.db.QueryRow(query, start.Format(time.RFC3339), end.Format(time.RFC3339))
+
+    var sum float64
+    if err := row.Scan(&sum); err != nil {
+        return 0, err
+    }
+    return sum, nil
+}
+
+func (r *SQLiteTransactionRepository) SumExpensesByCategoryName(start, end time.Time) (map[string]float64, error) {
+    query := `
+SELECT
+  COALESCE(c.name, 'Uncategorized') AS category,
+  COALESCE(SUM(ABS(t.amount)), 0)
+FROM transactions t
+LEFT JOIN categories c ON c.id = t.category_id
+WHERE t.type = 'expense'
+  AND t.date >= ?
+  AND t.date < ?
+GROUP BY c.name
+ORDER BY SUM(ABS(t.amount)) DESC;
+`
+
+    rows, err := r.db.Query(query, start.Format(time.RFC3339), end.Format(time.RFC3339))
+    if err != nil {
+        return nil, err
+    }
+    defer rows.Close()
+
+    result := make(map[string]float64)
+    for rows.Next() {
+        var category string
+        var sum float64
+        if err := rows.Scan(&category, &sum); err != nil {
+            return nil, err
+        }
+        result[category] = sum
+    }
+    return result, rows.Err()
+}
