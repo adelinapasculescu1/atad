@@ -3,6 +3,7 @@ package repository
 import (
     "database/sql"
     "time"
+    "strings"
 
     "github.com/adelinapasculescu1/atad/internal/models"
 )
@@ -12,6 +13,7 @@ type TransactionRepository interface {
     SumExpensesByCategory(start, end time.Time) (map[int64]float64, error)
     SumExpenses(start, end time.Time) (float64, error)
     SumExpensesByCategoryName(start, end time.Time) (map[string]float64, error)
+    List(filter TransactionFilter) ([]models.Transaction, error)
 }
 
 type SQLiteTransactionRepository struct {
@@ -132,4 +134,98 @@ ORDER BY SUM(ABS(t.amount)) DESC;
         result[category] = sum
     }
     return result, rows.Err()
+}
+
+func (r *SQLiteTransactionRepository) List(filter TransactionFilter) ([]models.Transaction, error) {
+    query := `
+SELECT
+  t.id,
+  t.date,
+  t.description,
+  t.amount,
+  t.type,
+  t.category_id,
+  t.source
+FROM transactions t
+LEFT JOIN categories c ON c.id = t.category_id
+WHERE 1=1
+`
+    args := []any{}
+
+    if filter.From != nil {
+        query += " AND t.date >= ?"
+        args = append(args, filter.From.Format(time.RFC3339))
+    }
+    if filter.To != nil {
+        query += " AND t.date < ?"
+        args = append(args, filter.To.Format(time.RFC3339))
+    }
+    if filter.Type != nil {
+        query += " AND t.type = ?"
+        args = append(args, *filter.Type)
+    }
+    if filter.CategoryName != nil {
+        query += " AND c.name = ?"
+        args = append(args, *filter.CategoryName)
+    }
+    if filter.Query != nil {
+        query += " AND LOWER(t.description) LIKE ?"
+        args = append(args, "%"+strings.ToLower(*filter.Query)+"%")
+    }
+    if filter.MinAmount != nil {
+        query += " AND ABS(t.amount) >= ?"
+        args = append(args, *filter.MinAmount)
+    }
+    if filter.MaxAmount != nil {
+        query += " AND ABS(t.amount) <= ?"
+        args = append(args, *filter.MaxAmount)
+    }
+
+    query += " ORDER BY t.date DESC, t.id DESC"
+
+    limit := filter.Limit
+    if limit <= 0 {
+        limit = 50
+    }
+    query += " LIMIT ?"
+    args = append(args, limit)
+
+    if filter.Offset > 0 {
+        query += " OFFSET ?"
+        args = append(args, filter.Offset)
+    }
+
+    rows, err := r.db.Query(query, args...)
+    if err != nil {
+        return nil, err
+    }
+    defer rows.Close()
+
+    var out []models.Transaction
+    for rows.Next() {
+        var t models.Transaction
+        var dateStr string
+        var categoryID sql.NullInt64
+
+        if err := rows.Scan(&t.ID, &dateStr, &t.Description, &t.Amount, &t.Type, &categoryID, &t.Source); err != nil {
+            return nil, err
+        }
+
+        parsedDate, err := time.Parse(time.RFC3339, dateStr)
+        if err != nil {
+            return nil, err
+        }
+        t.Date = parsedDate
+
+        if categoryID.Valid {
+            cid := categoryID.Int64
+            t.CategoryID = &cid
+        } else {
+            t.CategoryID = nil
+        }
+
+        out = append(out, t)
+    }
+
+    return out, rows.Err()
 }

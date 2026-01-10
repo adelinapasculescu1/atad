@@ -7,19 +7,20 @@ import (
     "github.com/adelinapasculescu1/atad/internal/services/transactionsvc"
     "github.com/adelinapasculescu1/atad/internal/services/budgetsvc"
     "github.com/adelinapasculescu1/atad/internal/services/reportsvc"
+    "github.com/adelinapasculescu1/atad/internal/services/searchsvc"
     "github.com/spf13/cobra"
 )
 
 
 type Deps struct {
-    DB          *sql.DB
-    ImportSvc   *importsvc.Service
-    TransactionSvc *transactionsvc.Service
-    CategoryRepo repository.CategoryRepository
-    BudgetSvc *budgetsvc.Service
-    ReportSvc *reportsvc.Service
+    DB              *sql.DB
+    ImportSvc       *importsvc.Service
+    TransactionSvc  *transactionsvc.Service
+    CategoryRepo     repository.CategoryRepository
+    BudgetSvc       *budgetsvc.Service
+    ReportSvc       *reportsvc.Service
+    SearchSvc       *searchsvc.Service
 
-    //to be added more
 }
 
 
@@ -36,6 +37,7 @@ func NewRootCommand(deps Deps) *cobra.Command {
         NewCategoryCommand(deps),
         NewBudgetCommand(deps),
         NewReportCommand(deps),
+        NewSearchCommand(deps),
     )
 
     return rootCmd

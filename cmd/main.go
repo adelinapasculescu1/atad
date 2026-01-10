@@ -10,6 +10,7 @@ import (
     "github.com/adelinapasculescu1/atad/internal/services/transactionsvc"
     "github.com/adelinapasculescu1/atad/internal/services/budgetsvc"
     "github.com/adelinapasculescu1/atad/internal/services/reportsvc"
+    "github.com/adelinapasculescu1/atad/internal/services/searchsvc"
 )
 
 
@@ -30,7 +31,7 @@ func main() {
     categoryRepo := repository.NewSQLiteCategoryRepository(database)
     budgetRepo := repository.NewSQLiteBudgetRepository(database)
     reportService := reportsvc.NewService(txRepo)
-
+    searchService := searchsvc.NewService(txRepo)
     importService := importsvc.NewService(txRepo, categoryRepo)
     transactionService := transactionsvc.NewService(txRepo)
     budgetService := budgetsvc.NewService(budgetRepo, categoryRepo, txRepo)
@@ -43,6 +44,7 @@ func main() {
         CategoryRepo:   categoryRepo,
         BudgetSvc:      budgetService,
         ReportSvc:      reportService,
+        SearchSvc:      searchService,
     }
 
     rootCmd := cli.NewRootCommand(deps)
